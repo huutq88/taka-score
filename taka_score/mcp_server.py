@@ -30,10 +30,13 @@ from taka_score.schemas.request import EvaluateRequest, MIN_WORDS, MAX_WORDS
 mcp = FastMCP(
     "taka-score",
     instructions=(
-        "TAKA Score là MCP server đánh giá kỹ thuật diễn đạt văn xuôi tiếng Việt. "
-        "Chỉ đánh giá kỹ thuật viết (lặp từ, nhịp câu, từ vựng, liên kết...), "
-        "KHÔNG đánh giá giá trị văn học, cốt truyện hay cảm xúc. "
-        "Dùng tool `evaluate_vietnamese_style_technical` để phân tích một chương/đoạn truyện."
+        "TAKA Score là công cụ đánh giá kỹ thuật viết văn tiếng Việt (Rule-based).\n\n"
+        "HƯỚNG DẪN CHO AGENT (LobeChat/thothan.ai):\n"
+        "1. Khi nhận văn bản từ user, gọi tool `evaluate_vietnamese_style_technical` để lấy điểm kỹ thuật.\n"
+        "2. Đọc danh sách câu nghi vấn trong `suspicious_sentences` từ kết quả trả về của tool.\n"
+        "3. Sử dụng trí thông minh của bạn (LLM) để đánh giá ĐỘ TỰ NHIÊN (Naturalness) của các câu này (chấm điểm sượng, hành văn lủng củng, dịch thuật hóa).\n"
+        "4. Hãy tự chấm điểm 'Độ tự nhiên (Naturalness)' cho toàn bộ chương truyện (từ 0-100) và đưa điểm này vào bảng điểm cuối cùng.\n"
+        "5. Trình bày báo cáo Markdown đẹp mắt gồm: Bảng điểm tổng hợp (kèm điểm Naturalness bạn vừa tự chấm), điểm mạnh/yếu, và gợi ý viết lại cụ thể cho từng câu nghi vấn."
     ),
     host="0.0.0.0",
     port=int(os.environ.get("PORT", "8002")),

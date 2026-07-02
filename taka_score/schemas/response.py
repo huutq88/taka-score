@@ -21,6 +21,11 @@ class TechnicalFinding(BaseModel):
     severity: str   # "info" | "warning" | "error"
 
 
+class SuspiciousSentence(BaseModel):
+    text: str
+    reason: str
+
+
 class EvaluateResponse(BaseModel):
     ok: bool = True
     overall_score: float
@@ -30,6 +35,7 @@ class EvaluateResponse(BaseModel):
     strengths: list[str]
     weaknesses: list[str]
     technical_findings: list[TechnicalFinding]
+    suspicious_sentences: list[SuspiciousSentence] = []
     examples: list[str]
     meta: dict           # word_count, sentence_count, paragraph_count, dialogue_ratio
 

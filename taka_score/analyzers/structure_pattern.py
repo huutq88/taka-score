@@ -33,6 +33,15 @@ class StructurePatternAnalyzer(BaseAnalyzer):
 
         overall = opener_score * 0.5 + consec_score * 0.5
 
+        # Trích xuất các câu nghi vấn lặp cấu trúc liên tiếp cho LobeChat
+        suspicious = []
+        # consec_examples chứa thông tin về các chuỗi câu lặp
+        for ex in consec_examples:
+            suspicious.append({
+                "text": ex,
+                "reason": "Lặp cấu trúc mở đầu câu liên tiếp (gây đơn điệu)"
+            })
+
         return AnalyzerResult(
             score=round(overall, 1),
             findings=opener_findings + consec_findings,
@@ -40,6 +49,7 @@ class StructurePatternAnalyzer(BaseAnalyzer):
             raw_metrics={
                 "opener_score": opener_score,
                 "consecutive_score": consec_score,
+                "suspicious_sentences": suspicious[:3]
             },
         )
 

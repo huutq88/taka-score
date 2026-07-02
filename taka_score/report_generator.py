@@ -54,6 +54,7 @@ def generate_report(
     # Technical findings
     findings: list[TechnicalFinding] = []
     examples: list[str] = []
+    suspicious_sentences_list = []
 
     for analyzer_name, result in analyzer_results.items():
         for msg in result.findings:
@@ -68,6 +69,12 @@ def generate_report(
                 message=msg,
                 severity=severity,
             ))
+        
+        # Gom các câu nghi vấn
+        if "suspicious_sentences" in result.raw_metrics:
+            for item in result.raw_metrics["suspicious_sentences"]:
+                suspicious_sentences_list.append(item)
+
         if include_examples and detail_level in ("medium", "high"):
             examples.extend(result.examples)
 
@@ -83,6 +90,7 @@ def generate_report(
         strengths=strengths,
         weaknesses=weaknesses,
         technical_findings=findings,
+        suspicious_sentences=suspicious_sentences_list[:10],  # Max 10 câu nghi vấn chất lượng nhất
         examples=examples[:10],
         meta=meta,
     )

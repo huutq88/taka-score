@@ -65,6 +65,17 @@ class ReadabilityAnalyzer(BaseAnalyzer):
             + hard_score * 0.15
         )
 
+        # Trích xuất các câu nghi vấn cho LobeChat
+        suspicious = []
+        for s in sentences:
+            s_clean = s.strip()
+            # Câu nhiều phẩy
+            if s.count(",") >= 3:
+                suspicious.append({"text": s_clean, "reason": "Câu có mật độ dấu phẩy cao (có thể quá phức tạp)"})
+            # Câu quá dài
+            elif len(s.split()) > _MAX_COMFORTABLE_SYLLABLES:
+                suspicious.append({"text": s_clean, "reason": f"Câu quá dài ({len(s.split())} âm tiết), dễ gây vấp khi đọc"})
+
         return AnalyzerResult(
             score=round(overall, 1),
             findings=comma_findings + sub_findings + para_findings + hard_findings,
@@ -74,6 +85,7 @@ class ReadabilityAnalyzer(BaseAnalyzer):
                 "subclause_score": subclause_score,
                 "para_density_score": para_score,
                 "hard_sentence_score": hard_score,
+                "suspicious_sentences": suspicious[:5],  # giới hạn max 5 câu nổi bật nhất
             },
         )
 
