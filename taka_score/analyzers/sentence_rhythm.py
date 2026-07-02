@@ -55,13 +55,13 @@ class SentenceRhythmAnalyzer(BaseAnalyzer):
 
         # Đánh giá CV (biến thiên nhịp câu)
         if cv < _CV_IDEAL_MIN:
-            cv_score = 50.0
+            cv_score = 40.0  # phạt nặng hơn khi monotone
             findings.append(
                 f"Nhịp câu đơn điệu (CV={cv:.2f}). "
                 "Các câu quá đồng đều về độ dài, thiếu biến tấu."
             )
         elif cv > _CV_IDEAL_MAX:
-            cv_score = 70.0
+            cv_score = 65.0
             findings.append(
                 f"Nhịp câu không ổn định (CV={cv:.2f}). "
                 "Độ dài câu thay đổi quá đột ngột."

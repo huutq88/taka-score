@@ -11,8 +11,8 @@ import statistics
 from taka_score.analyzers import BaseAnalyzer, AnalyzerResult
 
 # Ngưỡng mật độ dấu phẩy (phẩy / câu)
-_COMMA_HIGH = 4.0    # > 4 phẩy/câu → phức tạp
-_COMMA_OK = 2.5
+_COMMA_HIGH = 2.5    # > 2.5 phẩy/câu → phức tạp
+_COMMA_OK = 1.5
 
 # Ngưỡng mật độ mệnh đề phụ (từ kết nối phụ / câu)
 _SUBCLAUSE_RE = re.compile(
@@ -59,10 +59,10 @@ class ReadabilityAnalyzer(BaseAnalyzer):
         hard_score, hard_findings, hard_examples = self._hard_sentences(sentences)
 
         overall = (
-            comma_score * 0.25
-            + subclause_score * 0.25
-            + para_score * 0.25
-            + hard_score * 0.25
+            comma_score * 0.40
+            + subclause_score * 0.30
+            + para_score * 0.15
+            + hard_score * 0.15
         )
 
         return AnalyzerResult(
@@ -94,7 +94,7 @@ class ReadabilityAnalyzer(BaseAnalyzer):
         avg = statistics.mean(densities)
 
         if avg > _COMMA_HIGH:
-            score = max(40.0, 100.0 - (avg - _COMMA_OK) * 15)
+            score = max(30.0, 100.0 - (avg - _COMMA_OK) * 20)
             findings.append(
                 f"Mật độ dấu phẩy cao ({avg:.1f} phẩy/câu). "
                 "Nhiều câu phức với quá nhiều mệnh đề."
