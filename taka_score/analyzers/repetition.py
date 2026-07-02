@@ -7,14 +7,14 @@ from dataclasses import dataclass
 
 from taka_score.analyzers import BaseAnalyzer, AnalyzerResult
 
-# Cửa sổ tìm lặp từ (câu)
-_WORD_REPEAT_WINDOW = 5
+# Cửa sổ tìm lặp từ (đơn vị: từ)
+_WORD_REPEAT_WINDOW = 15
 # Ngưỡng: từ xuất hiện >= N lần trong cửa sổ là lặp
-_WORD_REPEAT_THRESHOLD = 3
+_WORD_REPEAT_THRESHOLD = 4
 # N-gram để phát hiện lặp cụm từ
 _NGRAM_SIZES = (2, 3)
-# Tỷ lệ n-gram lặp để coi là "có vấn đề"
-_NGRAM_REPEAT_RATIO_THRESHOLD = 0.15
+# Tỷ lệ n-gram có xuất hiện > 1 lần để coi là "có vấn đề"
+_NGRAM_REPEAT_RATIO_THRESHOLD = 0.08
 # Số từ đầu câu để so sánh pattern mở đầu
 _OPENER_WORDS = 2
 
@@ -97,16 +97,21 @@ class RepetitionAnalyzer(BaseAnalyzer):
                 " ".join(all_words[i : i + n])
                 for i in range(len(all_words) - n + 1)
             ]
+            if not ngrams:
+                continue
             c = Counter(ngrams)
+            # Số n-gram xuất hiện nhiều hơn 1 lần (unique repeated)
             repeated = {ng: cnt for ng, cnt in c.items() if cnt > 1}
-            ratio = sum(repeated.values()) / max(len(ngrams), 1)
+            # Tỷ lệ = số lượt bị lặp thêm / tổng
+            extra_repeats = sum(cnt - 1 for cnt in repeated.values())
+            ratio = extra_repeats / max(len(ngrams), 1)
 
             if ratio > _NGRAM_REPEAT_RATIO_THRESHOLD:
                 findings.append(
                     f"Lặp cụm {n} từ: {len(repeated)} cụm bị lặp "
                     f"(tỷ lệ {ratio:.1%})"
                 )
-                total_penalty += ratio * 30
+                total_penalty += ratio * 60  # tăng penalty
 
             for ng, cnt in sorted(repeated.items(), key=lambda x: -x[1])[:2]:
                 if len(examples) < 4:

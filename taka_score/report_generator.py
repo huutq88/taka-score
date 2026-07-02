@@ -57,9 +57,10 @@ def generate_report(
 
     for analyzer_name, result in analyzer_results.items():
         for msg in result.findings:
+            # Severity dựa theo score của chính analyzer đó
             severity = (
-                "error" if result.score < 50
-                else "warning" if result.score < 70
+                "error" if result.score < 55
+                else "warning" if result.score < 75
                 else "info"
             )
             findings.append(TechnicalFinding(
