@@ -1,0 +1,118 @@
+# Từ nối tiếng Việt — Connectors for cohesion analysis
+# Format: mỗi dòng 1 từ/cụm từ nối
+# Các dòng bắt đầu bằng # là comment
+
+# Tương phản / nhượng bộ
+tuy nhiên
+mặc dù
+dù vậy
+dẫu vậy
+dẫu sao
+tuy thế
+tuy vậy
+nhưng
+nhưng mà
+song
+song le
+thế nhưng
+tuy nhiên
+trái lại
+ngược lại
+trong khi đó
+mặt khác
+thế mà
+ấy vậy mà
+
+# Nhân quả
+vì vậy
+do đó
+vì thế
+bởi thế
+bởi vậy
+cho nên
+vì
+bởi
+bởi vì
+do
+tại vì
+vì rằng
+bởi lẽ
+lý do là
+kết quả là
+hậu quả là
+vì lẽ đó
+
+# Bổ sung / thêm vào
+hơn nữa
+ngoài ra
+bên cạnh đó
+thêm vào đó
+đồng thời
+ngoài việc
+cũng như
+và
+cũng
+thêm vào
+không những thế
+không chỉ vậy
+hơn thế nữa
+đặc biệt là
+cụ thể là
+
+# Thứ tự / thời gian
+sau đó
+tiếp theo
+kế đó
+rồi
+rồi thì
+sau khi
+trước khi
+khi đó
+lúc ấy
+lúc đó
+ngay sau đó
+một lúc sau
+chẳng bao lâu
+cuối cùng
+cuối cùng thì
+đầu tiên
+thứ nhất
+thứ hai
+thứ ba
+tiếp theo đó
+trước tiên
+ban đầu
+về sau
+dần dần
+từng chút một
+
+# Điều kiện
+nếu
+nếu như
+nếu mà
+miễn là
+chỉ cần
+với điều kiện
+trừ khi
+hễ
+giả sử
+giả như
+trong trường hợp
+
+# Mục đích
+để
+nhằm
+để mà
+với mục đích
+hòng
+cốt
+nhằm mục đích
+
+# Tóm kết
+tóm lại
+nói chung
+nhìn chung
+xét cho cùng
+nhìn lại
+về cơ bản
+về tổng thể

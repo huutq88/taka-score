@@ -1,0 +1,15 @@
+{
+  "identifier": "taka-score",
+  "author": "TAKA Score (GoG Studio)",
+  "meta": {
+    "title": "TAKA Style Evaluator",
+    "description": "Vietnamese novel writing style technical evaluator. Analyzes fluency, repetition, lexical diversity, sentence rhythm, readability, structure patterns and cohesion.",
+    "tags": ["mcp", "vietnamese", "nlp", "style", "writing"],
+    "avatar": "📝"
+  },
+  "type": "mcp",
+  "mcp": {
+    "transport": "sse",
+    "url": "/mcp"
+  }
+}
