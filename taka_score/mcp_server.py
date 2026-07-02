@@ -22,6 +22,7 @@ from taka_score.analyzers.cohesion import CohesionAnalyzer
 from taka_score.scorer import ScoreAggregator
 from taka_score.report_generator import generate_report
 from taka_score.schemas.request import EvaluateRequest, MIN_WORDS, MAX_WORDS
+from taka_score.db import fetch_chapter_metadata, fetch_postgres_document
 
 # ──────────────────────────────────────────────────────────────
 # Server definition
@@ -176,3 +177,75 @@ def evaluate_vietnamese_style_technical(
             "error": f"Lỗi nội bộ: {str(e)}",
             "code": "INTERNAL_ERROR",
         }
+
+
+@mcp.tool()
+def evaluate_chapter_by_id(
+    chapter_id: Annotated[str, "ID của chương truyện trong database (e.g., 'chap_01')"],
+    detail_level: Annotated[str, "Mức chi tiết báo cáo: 'low', 'medium', 'high'. Mặc định: 'medium'"] = "medium",
+    include_examples: Annotated[bool, "Có kèm ví dụ cụ thể không. Mặc định: True"] = True,
+) -> dict[str, Any]:
+    """
+    Đánh giá kỹ thuật diễn đạt của một chương truyện bằng chapter_id từ database.
+
+    Tool tự động truy vấn Neo4j và Postgres để lấy văn bản của chương
+    và thực hiện đánh giá chất lượng viết mà không cần truyền text thủ công.
+    """
+    # 1. Truy vấn metadata từ Graph DB
+    try:
+        meta = fetch_chapter_metadata(chapter_id)
+    except Exception as e:
+        return {
+            "ok": False,
+            "error": f"Lỗi kết nối Graph Database (Neo4j): {str(e)}",
+            "code": "DATABASE_CONNECTION_ERROR",
+        }
+
+    if not meta:
+        return {
+            "ok": False,
+            "error": f"Không tìm thấy thông tin chương với ID '{chapter_id}' trong Graph DB.",
+            "code": "CHAPTER_NOT_FOUND",
+        }
+
+    document_id = meta.get("document_id")
+    if not document_id:
+        return {
+            "ok": False,
+            "error": f"Chương '{chapter_id}' không có document_id hợp lệ trong Graph DB.",
+            "code": "INVALID_DOCUMENT_ID",
+        }
+
+    # 2. Truy vấn text thô từ Postgres
+    try:
+        text = fetch_postgres_document(document_id)
+    except Exception as e:
+        return {
+            "ok": False,
+            "error": f"Lỗi kết nối Document Database (Postgres): {str(e)}",
+            "code": "DATABASE_CONNECTION_ERROR",
+        }
+
+    if not text or not text.strip():
+        return {
+            "ok": False,
+            "error": f"Không tìm thấy nội dung văn bản cho document_id '{document_id}' (Chương '{chapter_id}').",
+            "code": "CONTENT_EMPTY",
+        }
+
+    # 3. Chạy đánh giá
+    result = evaluate_vietnamese_style_technical(
+        text=text,
+        mode="chapter",
+        detail_level=detail_level,
+        include_examples=include_examples,
+    )
+
+    # Bổ sung thông tin metadata bộ truyện vào kết quả trả về
+    if result.get("ok") and "meta" in result:
+        result["meta"]["chapter_id"] = chapter_id
+        result["meta"]["chapter_title"] = meta.get("title")
+        result["meta"]["story_id"] = meta.get("story_id")
+        result["meta"]["story_title"] = meta.get("story_title")
+
+    return result
