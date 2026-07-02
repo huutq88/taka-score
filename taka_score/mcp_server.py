@@ -56,11 +56,6 @@ _analyzers = {
 _aggregator = ScoreAggregator()
 
 
-def create_app():
-    """Factory cho uvicorn khi chạy HTTP transport."""
-    return mcp.sse_app()
-
-
 # ──────────────────────────────────────────────────────────────
 # Tool
 # ──────────────────────────────────────────────────────────────

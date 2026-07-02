@@ -19,8 +19,7 @@ def main():
             f"(reload={'enabled' if reload_active else 'disabled'})..."
         )
         uvicorn.run(
-            "taka_score.mcp_server:create_app",
-            factory=True,
+            "taka_score.api_server:app",
             host="0.0.0.0",
             port=port,
             log_level="info",
