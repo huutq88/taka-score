@@ -1,289 +1,199 @@
-# Style Technical Evaluator MCP
+# Style Technical Evaluator MCP Architecture
 
 ## 1. Mục tiêu
 
-MCP tool này dùng để đánh giá **kỹ thuật diễn đạt** của một chương
-truyện tiếng Việt.
+MCP tool này dùng để đánh giá **kỹ thuật diễn đạt** của một chương truyện tiếng Việt.
 
-**Không chấm:** - Cốt truyện - Nhân vật - Cảm xúc - Ý tưởng nghệ thuật
+**Không chấm:**
+- Cốt truyện
+- Nhân vật
+- Cảm xúc
+- Ý tưởng nghệ thuật
 
-**Chỉ chấm:** - Độ trôi chảy - Độ tự nhiên - Độ lặp từ - Độ lặp cấu trúc
-câu - Độ đa dạng từ vựng - Nhịp câu - Độ dễ đọc - Mức ổn định văn phong
+**Chỉ chấm:**
+- Độ trôi chảy (Fluency)
+- Độ tự nhiên (Naturalness - Ủy thác cho thothan.ai Agent)
+- Độ lặp từ (Repetition)
+- Độ lặp cấu trúc câu (Structure Pattern)
+- Độ đa dạng từ vựng (Lexical Diversity)
+- Nhịp câu (Sentence Rhythm)
+- Độ dễ đọc (Readability - Tiêu chuẩn tiếng Việt)
+- Sự liên kết (Cohesion)
 
-------------------------------------------------------------------------
+---
 
 ## 2. Kiến trúc tổng thể
 
-``` text
-Novel Chapter Text
+```text
+Novel Chapter Text / chapter_id
+        │
+        ▼ (db.py / Postgres Fetcher)
+Raw Chapter Text
         │
         ▼
-Preprocessor
+Preprocessor (Unicode NFC & Normalization)
         │
         ▼
-Sentence / Paragraph Splitter
+Sentence / Paragraph Splitter (Abbreviations & Dialogue)
         │
         ▼
-Technical Analyzers
+Vietnamese Word Segmenter (underthesea)
         │
-        ├── Repetition Analyzer
-        ├── Lexical Diversity Analyzer
-        ├── Sentence Rhythm Analyzer
-        ├── Readability Analyzer
-        ├── Structure Pattern Analyzer
-        ├── Cohesion Analyzer
-        └── VietQuill Adapter
-        │
-        ▼
-Score Aggregator
-        │
-        ▼
-Report Generator
-        │
-        ▼
-MCP Response JSON
+        ├───────────────────────────────────────────────────────┐
+        ▼ (Rule-based Analyzers)                                ▼ (Suspicious Extract)
+Technical Analyzers                                     Suspicious Sentences
+  ├── Repetition Analyzer (15-word window & n-gram)        (Câu quá dài, sượng,
+  ├── Lexical Diversity Analyzer (MATTR & CTTR)            lặp cấu trúc câu)
+  ├── Sentence Rhythm Analyzer (CV distribution)                │
+  ├── Readability Analyzer (Comma & syllable density)           │
+  └── Cohesion Analyzer (Connectors & references)                │
+        │                                                       │
+        ▼                                                       ▼
+Score Aggregator                                     EvaluateResponse JSON
+        │                                                       │
+        └──────────────────────────┬────────────────────────────┘
+                                   ▼
+                            MCP Response JSON
+                                   │
+                                   ▼ (SSE / HTTP)
+                       [ thothan.ai / LobeChat ]
+                                   │
+                                   ▼ (AI Agent LLM)
+                    1. Đọc list suspicious_sentences
+                    2. Đánh giá Naturalness (Độ tự nhiên)
+                    3. Gợi ý sửa đổi & Render Markdown Report
 ```
 
-------------------------------------------------------------------------
+---
 
-## 3. Module
+## 3. Thành phần hệ thống
 
 ### 3.1 Preprocessor
-
--   Chuẩn hóa dấu câu
--   Chuẩn hóa khoảng trắng
--   Giữ nguyên nội dung gốc
--   Thống kê số từ, số đoạn
+- Chuẩn hóa Unicode NFC (combining $\rightarrow$ precomposed).
+- Chuẩn hóa dấu câu, ngoặc kép (`"`, `«`, `»` $\rightarrow$ `"`).
+- Chuẩn hóa khoảng trắng và dòng trống.
+- Thống kê sơ bộ từ, âm tiết, đoạn văn.
 
 ### 3.2 Sentence / Paragraph Splitter
+- Tách đoạn văn qua dòng trống.
+- Tách câu tiếng Việt thông minh, xử lý các từ viết tắt phổ biến (TP., PGS.TS., GS...) để tránh chia cắt câu sai.
+- Tách riêng biệt lời thoại (dấu gạch ngang `—` đầu dòng) để tránh phạt điểm phong cách khẩu ngữ.
 
--   Tách đoạn
--   Tách câu
--   Tách mệnh đề (tùy chọn)
+### 3.3 Vietnamese Word Segmenter (underthesea)
+- Thực hiện tách từ tiếng Việt để đảm bảo các phép đo lặp từ (repetition) và đa dạng từ vựng (TTR) hoạt động chính xác trên đơn vị "từ" thay vì "âm tiết".
+- Sử dụng cache (LRU cache) để tối ưu hiệu năng đối với văn bản dài.
 
-------------------------------------------------------------------------
+---
 
 ## 4. Technical Analyzers
 
 ### Repetition Analyzer
-
-Đánh giá:
-
--   Lặp từ
--   Lặp cụm từ
--   Lặp hình ảnh
--   Lặp cấu trúc mở đầu câu
-
-------------------------------------------------------------------------
+- **Word Repetition:** Sử dụng sliding window 15 từ để phát hiện lặp lại từ dày đặc.
+- **N-gram Repetition:** Phát hiện lặp cụm từ (bigram, trigram) qua tỷ lệ extra repeats.
+- **Sentence Opener:** Phát hiện lặp mẫu mở đầu câu (2 từ đầu).
 
 ### Lexical Diversity Analyzer
-
-Đo:
-
--   Type Token Ratio
--   Unique Word Ratio
--   Vocabulary Richness
--   Rare Word Ratio
-
-------------------------------------------------------------------------
+- Sử dụng **MATTR** (Moving Average Type-Token Ratio) với window 100 từ để chấm điểm sự phong phú của từ vựng mà không bị ảnh hưởng bởi độ dài chương truyện.
+- Kết hợp công thức **CTTR** (Corrected Type-Token Ratio).
 
 ### Sentence Rhythm Analyzer
-
-Đo:
-
--   Độ dài trung bình câu
--   Phân bố câu ngắn/vừa/dài
--   Độ biến thiên nhịp câu
--   Tỷ lệ câu quá dài
-
-------------------------------------------------------------------------
+- Đo độ biến thiên nhịp câu qua hệ số CV (Coefficient of Variation) của độ dài câu.
+- Đánh giá phân bố câu ngắn ($\le7$ từ), vừa, dài, câu quá dài ($>40$ từ).
 
 ### Readability Analyzer
-
-Đánh giá:
-
--   Độ dễ đọc
--   Độ dày đoạn văn
--   Mật độ dấu phẩy
--   Mật độ mệnh đề phụ
--   Các câu gây vấp
-
-------------------------------------------------------------------------
-
-### Structure Pattern Analyzer
-
-Phát hiện:
-
--   Lặp mẫu mở đầu câu
--   Lặp mẫu ngữ pháp
--   Lặp nhịp diễn đạt
-
-------------------------------------------------------------------------
+- Phép đo được tùy chỉnh hoàn toàn cho tiếng Việt:
+  - Mật độ dấu phẩy trong câu.
+  - Mật độ mệnh đề phụ (connector keywords).
+  - Mật độ câu trong đoạn (tránh đoạn văn quá dày đặc).
+  - Nhận diện câu gây vấp ($>30$ âm tiết).
 
 ### Cohesion Analyzer
+- Đo mật độ từ nối liên kết thông qua từ điển `connectors_vi.txt`.
+- Đo mật độ đại từ tham chiếu chuẩn (dùng regex word-boundary).
+- Đánh giá chất lượng chuyển tiếp giữa các đoạn văn.
 
-Đánh giá:
+---
 
--   Liên kết giữa các câu
--   Từ nối
--   Đại từ tham chiếu
--   Chuyển đoạn
+## 5. Security & DB Persistence Layer
 
-------------------------------------------------------------------------
+### Database Layer (`db.py`)
+- **Neo4j Graph DB:** Lấy `document_id`, `story_title`, `title` từ node Chapter. Sau khi có điểm, tự động cập nhật `style_score`, `style_grade` và thời gian đánh giá lên node Chapter.
+- **Postgres DB:** Lấy trực tiếp văn bản thô của chương từ bảng `agent_documents` thông qua `document_id`.
 
-### VietQuill Adapter
+### Security API (`api_server.py`)
+- MCP chạy trên cổng HTTP/SSE mặc định là `8002`.
+- Bảo mật bằng middleware `MCPAuthMiddleware` yêu cầu token `Authorization: Bearer <API_KEY>` trong Header để chống spam trên Production.
 
-Vai trò:
+---
 
--   Paraphrase Quality
--   Naturalness Estimation
--   Semantic Stability
--   Awkward Sentence Detection
+## 6. MCP Specification
 
-> Lưu ý: VietQuill chỉ hỗ trợ đánh giá chất lượng diễn đạt, không đánh
-> giá giá trị văn học.
+### Tools
 
-------------------------------------------------------------------------
+#### 1. `evaluate_vietnamese_style_technical`
+Chấm điểm trực tiếp từ văn bản thô truyền vào.
 
-## 5. Score Aggregator
-
-Các tiêu chí:
-
-  Metric                Weight
-  ------------------- --------
-  Fluency                  20%
-  Naturalness              15%
-  Repetition               15%
-  Lexical Diversity        15%
-  Sentence Rhythm          15%
-  Readability              10%
-  Cohesion                 10%
-
-------------------------------------------------------------------------
-
-## 6. Report Generator
-
-Sinh:
-
--   Tổng điểm
--   Điểm từng tiêu chí
--   Điểm mạnh
--   Điểm cần cải thiện
--   Ví dụ cụ thể
--   Gợi ý chỉnh sửa (nếu bật)
-
-------------------------------------------------------------------------
-
-## 7. MCP Tool
-
-### Tool Name
-
-``` text
-evaluate_vietnamese_style_technical
-```
-
-### Input
-
-``` json
+* **Input JSON:**
+```json
 {
-  "text": "...",
+  "text": "Nội dung chương truyện...",
   "mode": "chapter",
   "detail_level": "medium",
-  "include_examples": true,
-  "include_rewrite_suggestions": false
+  "include_examples": true
 }
 ```
 
-### Output
-
-``` json
+* **Output JSON:**
+```json
 {
-  "overall_score": 82,
-  "grade": "A-",
+  "ok": true,
+  "overall_score": 84.9,
+  "grade": "B",
   "scores": {
-    "fluency": 86,
-    "naturalness": 84,
-    "repetition": 72,
-    "lexical_diversity": 81,
-    "sentence_rhythm": 82,
-    "readability": 78,
-    "cohesion": 85
+    "fluency": 96.0,
+    "repetition": 84.0,
+    "lexical_diversity": 80.0,
+    "sentence_rhythm": 78.0,
+    "readability": 86.2,
+    "structure_pattern": 50.0,
+    "cohesion": 80.0
   },
   "summary": "...",
-  "strengths": [],
-  "weaknesses": [],
-  "technical_findings": [],
-  "examples": []
+  "strengths": ["Độ trôi chảy (96/100)"],
+  "weaknesses": ["Đa dạng cấu trúc (50/100)"],
+  "technical_findings": [
+    {
+      "analyzer": "readability",
+      "message": "Mật độ dấu phẩy cao (6.0 phẩy/câu)...",
+      "severity": "warning"
+    }
+  ],
+  "suspicious_sentences": [
+    {
+      "text": "Anh đi học, mang theo sách, mang theo vở...",
+      "reason": "Câu có mật độ dấu phẩy cao (có thể quá phức tạp)"
+    }
+  ],
+  "examples": [],
+  "meta": {
+    "word_count": 2781,
+    "sentence_count": 485,
+    "paragraph_count": 12,
+    "dialogue_ratio": 0.15,
+    "mode": "chapter"
+  }
 }
 ```
 
-------------------------------------------------------------------------
+#### 2. `evaluate_chapter_by_id`
+Chấm điểm trực tiếp bằng `chapter_id` từ database (Neo4j/Postgres).
 
-## 8. Cấu trúc dự án
-
-``` text
-style-tech-evaluator/
-├── README.md
-├── pyproject.toml
-├── server.py
-├── config.py
-│
-├── app/
-│   ├── preprocessor.py
-│   ├── splitter.py
-│   ├── scorer.py
-│   ├── report_generator.py
-│   │
-│   ├── analyzers/
-│   │   ├── repetition.py
-│   │   ├── lexical_diversity.py
-│   │   ├── sentence_rhythm.py
-│   │   ├── readability.py
-│   │   ├── structure_pattern.py
-│   │   └── cohesion.py
-│   │
-│   ├── adapters/
-│   │   └── vietquill_adapter.py
-│   │
-│   └── schemas/
-│       ├── request.py
-│       └── response.py
-│
-├── tests/
-└── examples/
+* **Input JSON:**
+```json
+{
+  "chapter_id": "chap_01",
+  "detail_level": "medium",
+  "include_examples": true
+}
 ```
-
-------------------------------------------------------------------------
-
-## 9. Roadmap
-
-### Phase 1
-
--   Rule-based metrics
--   Không dùng LLM
--   Không dùng VietQuill
-
-### Phase 2
-
--   Tích hợp VietQuill
--   Naturalness
--   Paraphrase Quality
--   Awkward Sentence Detection
-
-### Phase 3
-
--   LLM chỉ để diễn giải báo cáo
--   Không tham gia tính điểm
-
-------------------------------------------------------------------------
-
-## 10. Định hướng
-
-Ưu tiên:
-
-1.  Rule-based Technical Metrics
-2.  VietQuill
-3.  LLM (tuỳ chọn)
-
-Điểm số cuối cùng nên dựa trên các chỉ số khách quan thay vì đánh giá
-chủ quan về giá trị văn học.
+* **Output JSON:** Tương tự như trên, tự động bổ sung metadata chương và ghi kết quả style score ngược lại Neo4j.

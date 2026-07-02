@@ -22,7 +22,7 @@ from taka_score.analyzers.cohesion import CohesionAnalyzer
 from taka_score.scorer import ScoreAggregator
 from taka_score.report_generator import generate_report
 from taka_score.schemas.request import EvaluateRequest, MIN_WORDS, MAX_WORDS
-from taka_score.db import fetch_chapter_metadata, fetch_postgres_document
+from taka_score.db import fetch_chapter_metadata, fetch_postgres_document, set_chapter_style_score
 
 # ──────────────────────────────────────────────────────────────
 # Server definition
@@ -235,6 +235,19 @@ def evaluate_chapter_by_id(
         detail_level=detail_level,
         include_examples=include_examples,
     )
+
+    # 4. Ghi ngược điểm số lại Graph DB (Neo4j)
+    if result.get("ok"):
+        try:
+            set_chapter_style_score(
+                chapter_id=chapter_id,
+                score=result.get("overall_score", 0.0),
+                grade=result.get("grade", "F")
+            )
+        except Exception as e:
+            # Ghi lỗi ra stderr nhưng không làm hỏng kết quả trả về cho user
+            import sys
+            print(f"Warning: Failed to save evaluation score back to Neo4j: {e}", file=sys.stderr)
 
     # Bổ sung thông tin metadata bộ truyện vào kết quả trả về
     if result.get("ok") and "meta" in result:

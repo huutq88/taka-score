@@ -9,6 +9,7 @@ import os
 import sys
 from typing import Any
 
+from datetime import datetime, timezone
 from neo4j import GraphDatabase
 
 _driver_instance = None
@@ -39,6 +40,15 @@ def _get_database() -> str:
     return os.environ.get("NEO4J_DATABASE", "neo4j")
 
 
+def _write(cypher: str, **params: Any) -> Any:
+    driver = _get_neo4j_driver()
+    try:
+        with driver.session(database=_get_database()) as session:
+            return session.run(cypher, **params).consume()
+    finally:
+        driver._real_close()
+
+
 def _read_single(cypher: str, **params: Any) -> dict[str, Any] | None:
     driver = _get_neo4j_driver()
     try:
@@ -47,6 +57,18 @@ def _read_single(cypher: str, **params: Any) -> dict[str, Any] | None:
             return record.data() if record else None
     finally:
         driver._real_close()
+
+
+def set_chapter_style_score(chapter_id: str, score: float, grade: str) -> None:
+    """Lưu style score, grade và timestamp lên node Chapter trong Graph DB."""
+    now = datetime.now(timezone.utc).isoformat()
+    query = """
+    MATCH (c:Chapter {id: $chapter_id})
+    SET c.style_score = $score,
+        c.style_grade = $grade,
+        c.style_evaluated_at = $now
+    """
+    _write(query, chapter_id=chapter_id, score=score, grade=grade, now=now)
 
 
 def fetch_chapter_metadata(chapter_id: str) -> dict[str, Any] | None:
